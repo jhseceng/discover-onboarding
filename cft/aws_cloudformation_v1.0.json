@@ -1,0 +1,313 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "For public release - This template sets up CloudTrail logging components and a cross account IAM role in order to enable CrowdStrike Falcon Discover For AWS functionality.",
+  "Metadata": {
+    "AWS::CloudFormation::Interface": {
+      "ParameterGroups": [
+        {
+          "Label": {"default": "Cross Account IAM Role (do not modify External ID and AWS Account ID values!)"},
+          "Parameters": ["RoleName","ExternalID", "CSAccountNumber","CSAssumingRoleName"]
+        },
+        {
+          "Label": {"default": "CloudTrail Details (this is only used if Create New Trail is set to true)"},
+          "Parameters": ["EnableNewCloudTrail", "CloudTrailName", "CloudTrailS3BucketName", "CloudTrailS3LogExpiration", "SnsTopicCloudTrail"]
+        },
+        {
+          "Label": {"default": "Registration Topic (CrowdStrike owned topic that is notified when executing the template.)"},
+          "Parameters": ["SnsTopicRegistration"]
+        }
+      ],
+      "ParameterLabels": {
+        "RoleName": {"default": "IAM Role Name"},
+        "ExternalID": {"default": "External ID"},
+        "CSAccountNumber": {"default": "AWS Account ID to Grant Permission"},
+        "CSAssumingRoleName": {"default": "Assuming IAM Role Name"},
+        "EnableNewCloudTrail": {"default": "Create New Trail"},
+        "SnsTopicRegistration": { "default": "Registration SNS Topic"},
+        "SnsTopicCloudTrail": { "default": "CloudTrail SNS Topic"},
+        "CloudTrailName": {"default": "Trail Name"},
+        "CloudTrailS3BucketName": {"default": "Trail S3 Bucket Name"},
+        "CloudTrailS3LogExpiration": {"default": "Trail S3 Bucket Expiration"}
+      }
+    }
+  },
+  "Outputs": {
+    "RoleARN": {
+      "Description": "The ARN of the role that can be assumed by the other account.",
+      "Value": {
+        "Fn::GetAtt": [
+          "iamRole",
+          "Arn"
+        ]
+      }
+    }
+  },
+  "Parameters": {
+    "RoleName": {
+      "Description": "The name of the cross account IAM role to be created.",
+      "MinLength": "1",
+      "Type": "String"
+    },
+    "ExternalID": {
+      "Description": "The External ID that will be required to assume the role.",
+      "MinLength": "1",
+      "Type": "String"
+    },
+    "CSAccountNumber": {
+      "AllowedPattern": "[0-9]+",
+      "Description": "The 12 digit AWS account number to grant access to.",
+      "MaxLength": "12",
+      "MinLength": "12",
+      "Type": "String"
+    },
+    "CSAssumingRoleName": {
+      "Description": "Name of the IAM role used within CrowdStrike to assume access to your account.",
+      "Type": "String"
+    },
+    "SnsTopicRegistration": {
+      "Description": "ARN of the CrowdStrike owned SNS topic for registration/provisioning. CloudFormation will push a message to this topic once the stack executes.",
+      "Type": "String"
+    },
+    "SnsTopicCloudTrail": {
+      "Description": "ARN of the CrowdStrike owned SNS topic for CloudTrail. As new log files are written to your S3 bucket, a notification will be published to this topic.",
+      "Type": "String"
+    },
+    "EnableNewCloudTrail": {
+      "AllowedValues": [ "true", "false"],
+      "Default": "true",
+      "Description": "If enabled, a new CloudTrail trail will be setup which gathers logs across all regions and sends them to CrowdStrike. If set to false, you must configure your existing trail as per the documentation",
+      "Type": "String"
+    },
+    "CloudTrailName": {
+      "Description": "Name of the trail to create in CloudTrail.",
+      "Type": "String",
+      "Default": "CrowdStrikeFalconDiscoverTrail"
+    },
+    "CloudTrailS3BucketName": {
+      "Description": "Name of the S3 bucket to place CloudTrail logs.",
+      "Type": "String"
+    },
+    "CloudTrailS3LogExpiration": {
+      "AllowedPattern": "[0-9]+",
+      "Description": "Number of days to retain cloudtrail logs in S3 bucket.",
+      "Type": "String",
+      "Default": "7"
+    }
+  },
+  "Conditions": {
+    "CreateNewTrail": {"Fn::Equals": [{"Ref": "EnableNewCloudTrail"}, "true"]}
+  },
+  "Resources": {
+    "s3Bucket": {
+      "Type": "AWS::S3::Bucket",
+      "Condition": "CreateNewTrail",
+      "Properties": {
+        "BucketName": {"Ref" : "CloudTrailS3BucketName"},
+        "AccessControl": "BucketOwnerFullControl",
+        "LifecycleConfiguration": {
+          "Rules": [
+            {
+              "Id": "CloudTrailS3LogRetention",
+              "Status": "Enabled",
+              "ExpirationInDays": {"Ref" : "CloudTrailS3LogExpiration"}
+            }
+          ]
+        }
+      }
+    },
+    "s3BucketPolicy": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Condition": "CreateNewTrail",
+      "Properties": {
+        "Bucket": {"Ref" : "s3Bucket"},
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Sid": "AWSCloudTrailAclCheck20150319",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "cloudtrail.amazonaws.com"
+              },
+              "Action": "s3:GetBucketAcl",
+              "Resource": [{
+                "Fn::Join": [ "", [
+                  "arn:aws:s3:::", {
+                    "Ref" : "CloudTrailS3BucketName"
+                  }
+                ]]
+              }]
+            },
+            {
+              "Sid": "AWSCloudTrailWrite20150319",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "cloudtrail.amazonaws.com"
+              },
+              "Action": "s3:PutObject",
+              "Resource": [{
+                "Fn::Join": [ "", [
+                  "arn:aws:s3:::", {
+                    "Ref" : "CloudTrailS3BucketName"
+                  }, "/AWSLogs/*/*"
+                ]]
+              }],
+              "Condition": {
+                "StringEquals": {
+                  "s3:x-amz-acl": "bucket-owner-full-control"
+                }
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        }
+      },
+      "DependsOn": "s3Bucket"
+    },
+    "cloudTrailLog": {
+      "Type": "AWS::CloudTrail::Trail",
+      "Condition": "CreateNewTrail",
+      "Properties": {
+        "TrailName": {"Ref": "CloudTrailName"},
+        "SnsTopicName": {"Ref" : "SnsTopicCloudTrail"},
+        "EventSelectors": [{
+          "ReadWriteType": "WriteOnly"
+        }],
+        "IncludeGlobalServiceEvents": true,
+        "IsLogging": true,
+        "IsMultiRegionTrail" : true,
+        "S3BucketName": {
+          "Ref" : "CloudTrailS3BucketName"
+        }
+      },
+      "DependsOn": ["s3Bucket","s3BucketPolicy"]
+    },
+    "iamRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": { "Ref": "RoleName"},
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Condition": {
+                "StringEquals": {
+                  "sts:ExternalId": {
+                    "Ref": "ExternalID"
+                  }
+                }
+              },
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:iam::",
+                      {
+                        "Ref": "CSAccountNumber"
+                      },
+                      ":role/",
+                      {
+                        "Ref": "CSAssumingRoleName"
+                      }
+                    ]
+                  ]
+                }
+              },
+              "Sid": ""
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "Path": "/"
+      }
+    },
+    "iamPolicyDescribeAccess": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyName": "DescribeAPICalls",
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "ec2:DescribeInstances",
+                "ec2:DescribeImages",
+                "ec2:DescribeNetworkInterfaces",
+                "ec2:DescribeVolumes",
+                "ec2:DescribeVpcs",
+                "ec2:DescribeRegions",
+                "ec2:DescribeSubnets",
+                "ec2:DescribeNetworkAcls",
+                "ec2:DescribeSecurityGroups",
+                "iam:ListAccountAliases"
+              ],
+              "Effect": "Allow",
+              "Resource": "*",
+              "Sid": ""
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "Roles": [ {
+          "Ref": "iamRole"
+        }]
+      },
+      "DependsOn": "iamRole"
+    },
+    "iamPolicyCloudTrailS3Access": {
+      "Type": "AWS::IAM::Policy",
+      "Condition": "CreateNewTrail",
+      "Properties": {
+        "PolicyName": "ReadS3CloudTrailFiles",
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "s3:GetObject"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    {
+                      "Fn::GetAtt" : [
+                        "s3Bucket", "Arn"
+                      ]
+                    },
+                    "/*"
+                  ]
+                ]},
+              "Sid": ""
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "Roles": [ {
+          "Ref": "iamRole"
+        }]
+      },
+      "DependsOn": ["s3Bucket", "iamRole"]
+    },
+    "RegistrationNotification": {
+      "Type": "AWS::CloudFormation::CustomResource",
+      "Version": "1.0",
+      "Properties": {
+        "ServiceToken": {"Ref" : "SnsTopicRegistration"},
+        "Version": "1.1",
+        "AccountID": {
+          "Ref": "AWS::AccountId"
+        },
+        "CloudTrailCreated": {
+          "Ref": "EnableNewCloudTrail"
+        },
+        "IamRoleARN": {
+          "Fn::GetAtt": [
+            "iamRole",
+            "Arn"
+          ]
+        }
+      }
+    }
+  }
+}
