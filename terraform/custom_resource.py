@@ -4,6 +4,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 import json
 
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
 # handler = logging.StreamHandler()
@@ -12,6 +13,7 @@ formatter = logging.Formatter('%(levelname)-8s %(message)s')
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 logger.setLevel(logging.INFO)
+
 
 
 
