@@ -1,19 +1,15 @@
 
 
-
-host_query_filter = "platform_name: 'Linux' + instance_id: '" + instance['AWS InstanceId'] + "'"
-
-falcon_aid = query_falcon_host(auth_header, host_query_filter)
-
-
-
-#
-# Return host infor based on _host_filter query_falcon_host
-#
-# host_query_filter = "platform_name: 'Linux' + instance_id: '" + instance['AWS InstanceId'] + "'"
+# Create the host filter
 #
 # platform_name options include 'Linux' and 'Windows'
 #
+host_query_filter = "platform_name: 'Linux' + instance_id: '" + instance['AWS InstanceId'] + "'"
+
+# Query the falcon API to fetch the aid.
+# Once you have the aid other api operations are possible
+falcon_aid = query_falcon_host(auth_header, host_query_filter)
+
 
 def query_falcon_host(_auth_header, _host_filter):
     _url = "https://api.crowdstrike.com/devices/queries/devices/v1"
