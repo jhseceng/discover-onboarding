@@ -1,8 +1,0 @@
-RoleName="CrowdStrikeFalcon"
-ExternalID="5asHGmOBSCLWqxr"
-CSAccountNumber="292230061137"
-SnsTopicRegistration="arn:aws:sns:us-west-1:292230061137:cs-cloudconnect-manager-registration"
-SnsTopicCloudTrail="arn:aws:sns:us-west-1:292230061137:cs-cloudconnect-aws-cloudtrail"
-CloudTrailS3BucketName="cs-falcon-cloudtrail-xilokzwpue"
-CSAssumingRoleName="CS-Prod-HG-CsCloudconnectaws"
-aws_region="us-west-1"
