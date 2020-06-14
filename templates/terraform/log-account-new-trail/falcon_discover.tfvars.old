@@ -1,0 +1,6 @@
+RoleName = ""
+ExternalID = ""
+CloudTrailS3BucketName = ""
+CloudTrailName= ""
+aws_local_account = ""
+aws_region = ""
