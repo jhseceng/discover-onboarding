@@ -20,7 +20,7 @@ Each directory contains a .tf, .tfvars and .vars file.
 The directory also contains a register_account.py file that can be run either as a `local-exec` provisioner 
 or as a standalone script.  Once the resources have been created in the account it has to be registered with the
 Crowdstrike API. The format of the request is 
-```javascript
+```python
 {
   "resources":[
     {
