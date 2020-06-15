@@ -8,9 +8,9 @@ resource "aws_iam_role" "iamRole" {
 data "aws_iam_policy_document" "DescribeAPICalls" {
     statement {
 
-    sid = "FalconDescribeAPICalls"
-    effect = "Allow"
-    actions = [
+      sid = "FalconDescribeAPICalls"
+      effect = "Allow"
+      actions = [
                "ec2:DescribeInstances",
                 "ec2:DescribeImages",
                 "ec2:DescribeNetworkInterfaces",
@@ -21,7 +21,8 @@ data "aws_iam_policy_document" "DescribeAPICalls" {
                 "ec2:DescribeNetworkAcls",
                 "ec2:DescribeSecurityGroups",
                 "iam:ListAccountAliases"
-    ]
+      ]
+      resources = ["*"]
   }
     }
 

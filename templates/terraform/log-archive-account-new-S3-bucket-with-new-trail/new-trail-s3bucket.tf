@@ -1,4 +1,9 @@
 //
+provider "aws" {
+  version = "~> 2.0"
+  region  = var.aws_region
+}
+
 //
 resource "aws_s3_bucket" "CloudTrail_bucket" {
   bucket                        = var.CloudTrailS3BucketName
@@ -121,11 +126,43 @@ data "aws_iam_policy_document" "FalconAssumeRolePolicyDocument" {
   }
 }
 
+data "aws_iam_policy_document" "DescribeAPICalls" {
+    statement {
+
+      sid = "FalconDescribeAPICalls"
+      effect = "Allow"
+      actions = [
+               "ec2:DescribeInstances",
+                "ec2:DescribeImages",
+                "ec2:DescribeNetworkInterfaces",
+                "ec2:DescribeVolumes",
+                "ec2:DescribeVpcs",
+                "ec2:DescribeRegions",
+                "ec2:DescribeSubnets",
+                "ec2:DescribeNetworkAcls",
+                "ec2:DescribeSecurityGroups",
+                "iam:ListAccountAliases"
+      ]
+      resources = ["*"]
+  }
+    }
+
+resource "aws_iam_policy" "DescribeAPICallsRolePolicy" {
+  name   = "DescribeAPICallsRolePolicy"
+  path   = "/"
+  policy = data.aws_iam_policy_document.DescribeAPICalls.json
+}
+
 resource "aws_iam_role" "iamRole" {
-  name = "FalconDiscoverS3AccessRole"
+  name = var.RoleName
   description                   = "Role assumed by Falcon Discover to read logs from S3"
   path = "/"
   assume_role_policy = data.aws_iam_policy_document.FalconAssumeRolePolicyDocument.json
+}
+
+resource "aws_iam_role_policy_attachment" "iamPolicyDescribeAPICallsAttach" {
+  role                      = aws_iam_role.iamRole.name
+  policy_arn                = aws_iam_policy.DescribeAPICallsRolePolicy.arn
 }
 
 resource "aws_iam_role_policy_attachment" "iamPolicyCloudTrailS3AccessAttach" {
@@ -146,24 +183,18 @@ resource "aws_cloudtrail" "crwd_trail" {
   s3_bucket_name                = var.CloudTrailS3BucketName
 }
 
-
-
-
-
 output "cloudtrail_bucket_owner_id" {
   value = var.aws_local_account
 }
 output "cloudtrail_bucket_region" {
   value = var.aws_region
 }
-
 output "external_id" {
   value = var.ExternalID
 }
-
 output "iam_role_arn" {
         value = aws_iam_role.iamRole.arn
 }
-output "id" {
+output "local_account" {
   value = var.aws_local_account
 }
