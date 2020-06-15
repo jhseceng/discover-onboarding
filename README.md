@@ -1,6 +1,6 @@
 # Falcon Discover for Cloud - Account Onboarding
 A collection of templates, scripts and documentation to setup AWS accounts in Falcon Discover.
-#Folder Structure
+### Folder Structure
 Folder structure
 1. Documents - Documentation
  
