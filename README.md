@@ -2,7 +2,7 @@
 A collection of templates, scripts and documentation to setup AWS accounts in Falcon Discover.
 
 ##Folder Structure
-
+Folder structure
 1. Documents - Documentation
  
 2. Templates 
