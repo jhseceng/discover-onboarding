@@ -149,6 +149,10 @@ resource "aws_cloudtrail" "crwd_trail" {
 
 
 
+
+output "cloudtrail_bucket_owner_id" {
+  value = var.aws_local_account
+}
 output "cloudtrail_bucket_region" {
   value = var.aws_region
 }
@@ -159,4 +163,7 @@ output "external_id" {
 
 output "iam_role_arn" {
         value = aws_iam_role.iamRole.arn
+}
+output "id" {
+  value = var.aws_local_account
 }
