@@ -59,6 +59,18 @@ resource "aws_iam_role" "iamRole" {
 }
 
 
+resource "aws_iam_policy" "DescribeAPICallsRolePolicy" {
+  name   = "DescribeAPICallsRolePolicy"
+  path   = "/"
+  policy = data.aws_iam_policy_document.DescribeAPICalls.json
+}
+
+
+resource "aws_iam_role_policy_attachment" "iamPolicyDescribeAPICallsAttach" {
+  role                      = aws_iam_role.iamRole.name
+  policy_arn                = aws_iam_policy.DescribeAPICallsRolePolicy.arn
+}
+
 
 
 output "cloudtrail_bucket_owner_id" {
