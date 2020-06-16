@@ -59,17 +59,7 @@ resource "aws_iam_role" "iamRole" {
 }
 
 
-resource "aws_cloudtrail" "crwd_trail" {
-  name = var.CloudTrailName
-  event_selector {
-    read_write_type = "WriteOnly"
-    include_management_events = true
-  }
-  include_global_service_events = true
-  enable_logging                = true
-  is_multi_region_trail         = true
-  s3_bucket_name                = var.CloudTrailS3BucketName
-}
+
 
 output "cloudtrail_bucket_owner_id" {
   value = var.CloudTrailS3BucketAccountNumber
