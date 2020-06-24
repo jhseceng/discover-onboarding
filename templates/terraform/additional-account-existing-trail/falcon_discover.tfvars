@@ -1,4 +1,4 @@
 RoleName="CrowdStrikeFalcon"
 ExternalID=""
 CloudTrailS3BucketName=""
-aws_region = "eu-west-1"
+aws_region = ""

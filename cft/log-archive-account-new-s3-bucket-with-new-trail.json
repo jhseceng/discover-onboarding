@@ -11,10 +11,6 @@
         {
           "Label": {"default": "CloudTrail Details (this is only used if Create New Trail is set to true)"},
           "Parameters": ["EnableNewCloudTrail", "CloudTrailName", "CloudTrailS3BucketName", "CloudTrailS3LogExpiration", "SnsTopicCloudTrail"]
-        },
-        {
-          "Label": {"default": "Registration Topic (CrowdStrike owned topic that is notified when executing the template.)"},
-          "Parameters": ["SnsTopicRegistration"]
         }
       ],
       "ParameterLabels": {
@@ -22,8 +18,6 @@
         "ExternalID": {"default": "External ID"},
         "CSAccountNumber": {"default": "AWS Account ID to Grant Permission"},
         "CSAssumingRoleName": {"default": "Assuming IAM Role Name"},
-        "EnableNewCloudTrail": {"default": "Create New Trail"},
-        "SnsTopicRegistration": { "default": "Registration SNS Topic"},
         "SnsTopicCloudTrail": { "default": "CloudTrail SNS Topic"},
         "CloudTrailName": {"default": "Trail Name"},
         "CloudTrailS3BucketName": {"default": "Trail S3 Bucket Name"},
@@ -46,6 +40,7 @@
     "RoleName": {
       "Description": "The name of the cross account IAM role to be created.",
       "MinLength": "1",
+      "Default": "CrowdStrikeFalcon",
       "Type": "String"
     },
     "ExternalID": {
@@ -58,19 +53,19 @@
       "Description": "The 12 digit AWS account number to grant access to.",
       "MaxLength": "12",
       "MinLength": "12",
-      "Type": "String"
+      "Type": "String",
+      "Default": "292230061137"
     },
     "CSAssumingRoleName": {
-      "Description": "Name of the IAM role used within CrowdStrike to assume access to your account.",
-      "Type": "String"
+      "Description": "Do not change unless directed by Crowdstrike.",
+      "Type": "String",
+      "Default": "CS-Prod-HG-CsCloudconnectaws"
     },
-    "SnsTopicRegistration": {
-      "Description": "ARN of the CrowdStrike owned SNS topic for registration/provisioning. CloudFormation will push a message to this topic once the stack executes.",
-      "Type": "String"
-    },
+
     "SnsTopicCloudTrail": {
-      "Description": "ARN of the CrowdStrike owned SNS topic for CloudTrail. As new log files are written to your S3 bucket, a notification will be published to this topic.",
-      "Type": "String"
+      "Description": "ARN of the CrowdStrike owned SNS topic for CloudTrail. . Do not change unless directed by Crowdstrike.",
+      "Type": "String",
+      "AllowedValues": ["arn:aws:sns:us-east-1:292230061137:cs-cloudconnect-aws-cloudtrail", "arn:aws:sns:us-east-2:292230061137:cs-cloudconnect-aws-cloudtrail", "arn:aws:sns:us-west-1:292230061137:cs-cloudconnect-aws-cloudtrail", "arn:aws:sns:us-west-2:292230061137:cs-cloudconnect-aws-cloudtrail", "arn:aws:sns:eu-west-1:292230061137:cs-cloudconnect-aws-cloudtrail", "arn:aws:sns:eu-west-2:292230061137:cs-cloudconnect-aws-cloudtrail"]
     },
     "EnableNewCloudTrail": {
       "AllowedValues": [ "true", "false"],
@@ -100,10 +95,17 @@
   "Resources": {
     "s3Bucket": {
       "Type": "AWS::S3::Bucket",
-      "Condition": "CreateNewTrail",
       "Properties": {
         "BucketName": {"Ref" : "CloudTrailS3BucketName"},
         "AccessControl": "BucketOwnerFullControl",
+        "NotificationConfiguration": {
+                "TopicConfigurations": [
+                    {
+                        "Topic": { "Ref": "SnsTopicCloudTrail" },
+                        "Event": "s3:ObjectCreated:Put"
+                    }
+                ]
+            },
         "LifecycleConfiguration": {
           "Rules": [
             {
@@ -117,7 +119,6 @@
     },
     "s3BucketPolicy": {
       "Type": "AWS::S3::BucketPolicy",
-      "Condition": "CreateNewTrail",
       "Properties": {
         "Bucket": {"Ref" : "s3Bucket"},
         "PolicyDocument": {
@@ -165,10 +166,8 @@
     },
     "cloudTrailLog": {
       "Type": "AWS::CloudTrail::Trail",
-      "Condition": "CreateNewTrail",
       "Properties": {
         "TrailName": {"Ref": "CloudTrailName"},
-        "SnsTopicName": {"Ref" : "SnsTopicCloudTrail"},
         "EventSelectors": [{
           "ReadWriteType": "WriteOnly"
         }],
@@ -256,7 +255,6 @@
     },
     "iamPolicyCloudTrailS3Access": {
       "Type": "AWS::IAM::Policy",
-      "Condition": "CreateNewTrail",
       "Properties": {
         "PolicyName": "ReadS3CloudTrailFiles",
         "PolicyDocument": {
@@ -288,26 +286,9 @@
         }]
       },
       "DependsOn": ["s3Bucket", "iamRole"]
-    },
-    "RegistrationNotification": {
-      "Type": "AWS::CloudFormation::CustomResource",
-      "Version": "1.0",
-      "Properties": {
-        "ServiceToken": {"Ref" : "SnsTopicRegistration"},
-        "Version": "1.1",
-        "AccountID": {
-          "Ref": "AWS::AccountId"
-        },
-        "CloudTrailCreated": {
-          "Ref": "EnableNewCloudTrail"
-        },
-        "IamRoleARN": {
-          "Fn::GetAtt": [
-            "iamRole",
-            "Arn"
-          ]
-        }
-      }
     }
+
   }
 }
+
+
