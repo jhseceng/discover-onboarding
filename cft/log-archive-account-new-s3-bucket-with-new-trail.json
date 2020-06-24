@@ -26,7 +26,7 @@
     }
   },
   "Outputs": {
-    "RoleARN": {
+    "iamRoleArn": {
       "Description": "The ARN of the role that can be assumed by the other account.",
       "Value": {
         "Fn::GetAtt": [
@@ -34,6 +34,17 @@
           "Arn"
         ]
       }
+    },
+    "cloudtrailBucketOwnerId": {
+      "Value": {"Ref" : "AWS::AccountId"}
+    },
+    "cloudtrailBucketRegion":
+    {
+      "Value": {"Ref" : "AWS::Region"}
+    },
+    "localAccount":
+    {
+      "Value": {"Ref" : "AWS::AccountId"}
     }
   },
   "Parameters": {
