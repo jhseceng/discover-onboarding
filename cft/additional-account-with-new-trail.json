@@ -1,0 +1,215 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "For public release - This template sets up CloudTrail logging components and a cross account IAM role in order to enable CrowdStrike Falcon Discover For AWS functionality.",
+  "Metadata": {
+    "AWS::CloudFormation::Interface": {
+      "ParameterGroups": [
+        {
+          "Label": {"default": "Cross Account IAM Role (do not modify External ID and AWS Account ID values!)"},
+          "Parameters": ["RoleName","ExternalID", "CSAccountNumber","CSAssumingRoleName"]
+        },
+        {
+          "Label": {"default": "CloudTrail Details (this is only used if Create New Trail is set to true)"},
+          "Parameters": ["EnableNewCloudTrail", "CloudTrailName", "CloudTrailS3BucketName","CloudTrailS3BucketAccountNumber", "CloudTrailS3LogExpiration", "SnsTopicCloudTrail"]
+        }
+      ],
+      "ParameterLabels": {
+        "RoleName": {"default": "IAM Role Name"},
+        "ExternalID": {"default": "External ID"},
+        "CSAccountNumber": {"default": "AWS Account ID to Grant Permission"},
+        "CSAssumingRoleName": {"default": "Assuming IAM Role Name"},
+        "SnsTopicCloudTrail": { "default": "CloudTrail SNS Topic"},
+        "CloudTrailName": {"default": "Trail Name"},
+        "CloudTrailS3BucketName": {"default": "Trail S3 Bucket Name"},
+        "CloudTrailS3BucketAccountNumber": {"default": "Trail S3 Bucket Account Number"},
+        "CloudTrailS3LogExpiration": {"default": "Trail S3 Bucket Expiration"}
+      }
+    }
+  },
+  "Outputs": {
+    "iamRoleArn": {
+      "Description": "The ARN of the role that can be assumed by the other account.",
+      "Value": {
+        "Fn::GetAtt": [
+          "iamRole",
+          "Arn"
+        ]
+      }
+    },
+    "externalid": {
+      "Value": { "Ref": "ExternalID"
+      }
+    },
+    "cloudtrailBucketOwnerId": {
+      "Value": { "Ref": "CloudTrailS3BucketAccountNumber"
+      }
+    },
+    "cloudtrailBucketRegion":
+    {
+      "Value": {"Ref" : "AWS::Region"}
+    },
+    "localAccount":
+    {
+      "Value": {"Ref" : "AWS::AccountId"}
+    }
+  },
+  "Parameters": {
+    "RoleName": {
+      "Description": "The name of the cross account IAM role to be created.",
+      "MinLength": "1",
+      "Default": "CrowdStrikeFalcon",
+      "Type": "String"
+    },
+    "ExternalID": {
+      "Description": "The External ID that will be required to assume the role.",
+      "MinLength": "1",
+      "Type": "String"
+    },
+    "CSAccountNumber": {
+      "AllowedPattern": "[0-9]+",
+      "Description": "The 12 digit AWS account number to grant access to.",
+      "MaxLength": "12",
+      "MinLength": "12",
+      "Type": "String",
+      "Default": "292230061137"
+    },
+    "CloudTrailS3BucketAccountNumber": {
+      "AllowedPattern": "[0-9]+",
+      "Description": "The 12 digit AWS account number to grant access to.",
+      "MaxLength": "12",
+      "MinLength": "12",
+      "Type": "String",
+      "Default": "292230061137"
+    },
+    "CSAssumingRoleName": {
+      "Description": "Do not change unless directed by Crowdstrike.",
+      "Type": "String",
+      "Default": "CS-Prod-HG-CsCloudconnectaws"
+    },
+
+    "SnsTopicCloudTrail": {
+      "Description": "ARN of the CrowdStrike owned SNS topic for CloudTrail. . Do not change unless directed by Crowdstrike.",
+      "Type": "String",
+      "AllowedValues": ["arn:aws:sns:us-east-1:292230061137:cs-cloudconnect-aws-cloudtrail", "arn:aws:sns:us-east-2:292230061137:cs-cloudconnect-aws-cloudtrail", "arn:aws:sns:us-west-1:292230061137:cs-cloudconnect-aws-cloudtrail", "arn:aws:sns:us-west-2:292230061137:cs-cloudconnect-aws-cloudtrail", "arn:aws:sns:eu-west-1:292230061137:cs-cloudconnect-aws-cloudtrail", "arn:aws:sns:eu-west-2:292230061137:cs-cloudconnect-aws-cloudtrail"]
+    },
+    "EnableNewCloudTrail": {
+      "AllowedValues": [ "true", "false"],
+      "Default": "true",
+      "Description": "If enabled, a new CloudTrail trail will be setup which gathers logs across all regions and sends them to CrowdStrike. If set to false, you must configure your existing trail as per the documentation",
+      "Type": "String"
+    },
+    "CloudTrailName": {
+      "Description": "Name of the trail to create in CloudTrail.",
+      "Type": "String",
+      "Default": "CrowdStrikeFalconDiscoverTrail"
+    },
+    "CloudTrailS3BucketName": {
+      "Description": "Name of the S3 bucket to place CloudTrail logs.",
+      "Type": "String"
+    },
+    "CloudTrailS3LogExpiration": {
+      "AllowedPattern": "[0-9]+",
+      "Description": "Number of days to retain cloudtrail logs in S3 bucket.",
+      "Type": "String",
+      "Default": "7"
+    }
+  },
+  "Conditions": {
+    "CreateNewTrail": {"Fn::Equals": [{"Ref": "EnableNewCloudTrail"}, "true"]}
+  },
+  "Resources": {
+
+    "cloudTrailLog": {
+      "Type": "AWS::CloudTrail::Trail",
+      "Properties": {
+        "TrailName": {"Ref": "CloudTrailName"},
+        "EventSelectors": [{
+          "ReadWriteType": "WriteOnly"
+        }],
+        "IncludeGlobalServiceEvents": true,
+        "IsLogging": true,
+        "IsMultiRegionTrail" : true,
+        "S3BucketName": {
+          "Ref" : "CloudTrailS3BucketName"
+        }
+      }
+    },
+    "iamRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": { "Ref": "RoleName"},
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Condition": {
+                "StringEquals": {
+                  "sts:ExternalId": {
+                    "Ref": "ExternalID"
+                  }
+                }
+              },
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:iam::",
+                      {
+                        "Ref": "CSAccountNumber"
+                      },
+                      ":role/",
+                      {
+                        "Ref": "CSAssumingRoleName"
+                      }
+                    ]
+                  ]
+                }
+              },
+              "Sid": ""
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "Path": "/"
+      }
+    },
+    "iamPolicyDescribeAccess": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyName": "DescribeAPICalls",
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "ec2:DescribeInstances",
+                "ec2:DescribeImages",
+                "ec2:DescribeNetworkInterfaces",
+                "ec2:DescribeVolumes",
+                "ec2:DescribeVpcs",
+                "ec2:DescribeRegions",
+                "ec2:DescribeSubnets",
+                "ec2:DescribeNetworkAcls",
+                "ec2:DescribeSecurityGroups",
+                "iam:ListAccountAliases"
+              ],
+              "Effect": "Allow",
+              "Resource": "*",
+              "Sid": ""
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "Roles": [ {
+          "Ref": "iamRole"
+        }]
+      },
+      "DependsOn": "iamRole"
+    }
+
+
+  }
+}
+
+
