@@ -35,6 +35,10 @@
         ]
       }
     },
+    "externalid": {
+      "Value": { "Ref": "ExternalID"
+      }
+    },
     "cloudtrailBucketOwnerId": {
       "Value": {"Ref" : "AWS::AccountId"}
     },
@@ -298,6 +302,7 @@
       },
       "DependsOn": ["s3Bucket", "iamRole"]
     }
+
 
   }
 }
