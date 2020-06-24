@@ -67,7 +67,7 @@
     },
     "CSAccountNumber": {
       "AllowedPattern": "[0-9]+",
-      "Description": "The 12 digit AWS account number to grant access to.",
+      "Description": "The 12 digit AWS account number to grant access to. Do not change unless directed by Crowdstrike",
       "MaxLength": "12",
       "MinLength": "12",
       "Type": "String",
@@ -75,11 +75,10 @@
     },
     "CloudTrailS3BucketAccountNumber": {
       "AllowedPattern": "[0-9]+",
-      "Description": "The 12 digit AWS account number to grant access to.",
+      "Description": "The 12 digit AWS account number that owns the S3 Bucket.",
       "MaxLength": "12",
       "MinLength": "12",
-      "Type": "String",
-      "Default": "292230061137"
+      "Type": "String"
     },
     "CSAssumingRoleName": {
       "Description": "Do not change unless directed by Crowdstrike.",
