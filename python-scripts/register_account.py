@@ -10,7 +10,8 @@ import sys
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
 # handler = logging.StreamHandler()
-handler = RotatingFileHandler("account_register.log", maxBytes=20971520, backupCount=5)
+handler = RotatingFileHandler(
+    "../templates/terraform/log-archive-account-new-S3-bucket-with-new-trail/account_register.log", maxBytes=20971520, backupCount=5)
 formatter = logging.Formatter('%(levelname)-8s %(message)s')
 handler.setFormatter(formatter)
 logger.addHandler(handler)
